@@ -1,49 +1,72 @@
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import RoleCards from './components/RoleCards';
-import Footer from './components/Footer';
+import React, { useMemo, useState } from 'react';
+import ControlsPanel from './components/ControlsPanel.jsx';
+import MembersList from './components/MembersList.jsx';
+import TreeCanvas from './components/TreeCanvas.jsx';
 
-function App() {
+function uid() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export default function App() {
+  const [members, setMembers] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+
+  const selected = useMemo(() => members.find(m => m.id === selectedId) || null, [members, selectedId]);
+
+  const addMember = data => {
+    const id = uid();
+    const parentExists = data.parentId && members.some(m => m.id === data.parentId);
+    const newMember = { id, ...data, parentId: parentExists ? data.parentId : null };
+    setMembers(prev => [...prev, newMember]);
+    setSelectedId(id);
+  };
+
+  const deleteMember = id => {
+    setMembers(prev => {
+      const remaining = prev.filter(m => m.id !== id);
+      return remaining.map(m => (m.parentId === id ? { ...m, parentId: null } : m));
+    });
+    if (selectedId === id) setSelectedId(null);
+  };
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="fixed inset-0 -z-0 pointer-events-none" aria-hidden>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.15),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(59,130,246,0.12),transparent_50%)]" />
-      </div>
-
-      <Navbar />
-      <main>
-        <Hero />
-        <RoleCards />
-
-        <section className="py-12 sm:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-3 gap-6">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <h3 className="text-lg font-semibold">Visual Family Tree</h3>
-                <p className="mt-2 text-white/70 text-sm">
-                  Explore relationships with an interactive, draggable graph powered by modern web tech.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <h3 className="text-lg font-semibold">Secure Access</h3>
-                <p className="mt-2 text-white/70 text-sm">
-                  Role-based permissions keep sensitive actions limited to the right people.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <h3 className="text-lg font-semibold">Payments Ready</h3>
-                <p className="mt-2 text-white/70 text-sm">
-                  Simulated subscriptions with logs for Super Admin to monitor activity.
-                </p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50">
+      <header className="sticky top-0 z-10 backdrop-blur bg-white/60 border-b">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center">👨‍👩‍👧‍👦</div>
+          <div>
+            <div className="font-semibold text-gray-900">Apna Parivaar — Family Tree</div>
+            <div className="text-xs text-gray-600">Add members, upload photos, and connect with accurate flow lines</div>
           </div>
-        </section>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-6">
+          <ControlsPanel
+            members={members}
+            selected={selected}
+            onAdd={addMember}
+            onDelete={deleteMember}
+            onClearSelection={() => setSelectedId(null)}
+          />
+          <MembersList
+            members={members}
+            selectedId={selectedId}
+            onSelect={m => setSelectedId(m.id)}
+            onDelete={deleteMember}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <TreeCanvas
+            members={members}
+            selectedId={selectedId}
+            onNodeClick={m => setSelectedId(m.id)}
+          />
+        </div>
       </main>
-      <Footer />
+
+      <footer className="py-8 text-center text-xs text-gray-500">Lines are auto-routed to avoid mismatches. Arrange by setting correct parent when adding members.</footer>
     </div>
   );
 }
-
-export default App;
