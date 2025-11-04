@@ -12,7 +12,7 @@ export default function MembersList({ members, onSelect, onDelete, selectedId })
               <img src={m.photo || ''} alt={m.name} className="w-10 h-10 rounded-lg object-cover border bg-gray-100" />
               <div>
                 <div className="text-sm font-medium text-gray-800">{m.name}</div>
-                <div className="text-xs text-gray-500">{m.role}</div>
+                <div className="text-xs text-gray-500">{m.gender || ''}</div>
               </div>
             </button>
             <button

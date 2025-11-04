@@ -1,15 +1,7 @@
 import React from 'react';
-import { User, Crown, Shield, Users } from 'lucide-react';
-
-const roleIconMap = {
-  'Super Admin': Crown,
-  'Family Admin': Shield,
-  'Sub Admin': Users,
-  'Member': User,
-};
+import { User } from 'lucide-react';
 
 export default function MemberCard({ member, onClick, isSelected }) {
-  const Icon = roleIconMap[member.role] || User;
   return (
     <button
       type="button"
@@ -34,10 +26,6 @@ export default function MemberCard({ member, onClick, isSelected }) {
           )}
         </div>
         <div className="flex-1 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Icon className="w-4 h-4 text-indigo-600" />
-            <span className="text-xs font-medium text-indigo-700">{member.role}</span>
-          </div>
           <div className="font-semibold text-gray-800 leading-tight line-clamp-1">{member.name}</div>
           <div className="text-xs text-gray-600 line-clamp-2 mt-1">{member.bio || '—'}</div>
           <div className="text-[10px] text-gray-500 mt-2">{member.gender || ''}</div>

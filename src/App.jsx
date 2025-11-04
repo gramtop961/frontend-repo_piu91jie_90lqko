@@ -13,18 +13,99 @@ export default function App() {
 
   const selected = useMemo(() => members.find(m => m.id === selectedId) || null, [members, selectedId]);
 
-  const addMember = data => {
+  const upsertMember = (member) => {
+    setMembers(prev => {
+      const idx = prev.findIndex(m => m.id === member.id);
+      if (idx === -1) return [...prev, member];
+      const next = [...prev];
+      next[idx] = member;
+      return next;
+    });
+  };
+
+  const addMemberWithRelation = ({ name, gender, bio, photo, anchorId, relation, siblingParentId }) => {
     const id = uid();
-    const parentExists = data.parentId && members.some(m => m.id === data.parentId);
-    const newMember = { id, ...data, parentId: parentExists ? data.parentId : null };
+    const anchor = members.find(m => m.id === anchorId) || null;
+    const newMember = { id, name: name.trim(), gender, bio, photo, parents: [], spouses: [] };
+
+    const byId = (id) => members.find(m => m.id === id);
+
+    const updateMember = (m) => setMembers(prev => prev.map(x => (x.id === m.id ? m : x)));
+
+    const addParentChildLink = (parentId, childId) => {
+      setMembers(prev => prev.map(m => {
+        if (m.id === parentId) {
+          const children = new Set([...(m.children || [])]);
+          children.add(childId);
+          return { ...m, children: Array.from(children) };
+        }
+        if (m.id === childId) {
+          const parents = new Set([...(m.parents || [])]);
+          parents.add(parentId);
+          return { ...m, parents: Array.from(parents) };
+        }
+        return m;
+      }));
+    };
+
+    const addSpouseLink = (aId, bId) => {
+      setMembers(prev => prev.map(m => {
+        if (m.id === aId) {
+          const spouses = new Set([...(m.spouses || [])]);
+          spouses.add(bId);
+          return { ...m, spouses: Array.from(spouses) };
+        }
+        if (m.id === bId) {
+          const spouses = new Set([...(m.spouses || [])]);
+          spouses.add(aId);
+          return { ...m, spouses: Array.from(spouses) };
+        }
+        return m;
+      }));
+    };
+
+    // First, insert the new member
     setMembers(prev => [...prev, newMember]);
+
+    // Then, wire up relations against the anchor
+    if (anchor && relation) {
+      if (relation === 'Father of' || relation === 'Mother of') {
+        // New member becomes a parent of anchor
+        addParentChildLink(id, anchor.id);
+      }
+      if (relation === 'Spouse of') {
+        addSpouseLink(id, anchor.id);
+      }
+      if (relation === 'Son of' || relation === 'Daughter of') {
+        // New member becomes child of anchor
+        addParentChildLink(anchor.id, id);
+      }
+      if (relation === 'Brother of' || relation === 'Sister of') {
+        // Share the same parents if anchor has them
+        const parents = anchor.parents || [];
+        parents.forEach(pId => addParentChildLink(pId, id));
+      }
+      if (relation === 'Nephew of' || relation === 'Niece of') {
+        // Child of a selected sibling of anchor (siblingParentId required)
+        if (siblingParentId) {
+          addParentChildLink(siblingParentId, id);
+        }
+      }
+    }
+
     setSelectedId(id);
   };
 
   const deleteMember = id => {
     setMembers(prev => {
-      const remaining = prev.filter(m => m.id !== id);
-      return remaining.map(m => (m.parentId === id ? { ...m, parentId: null } : m));
+      // Remove the member and clean relations
+      const remaining = prev.filter(m => m.id !== id).map(m => ({
+        ...m,
+        parents: (m.parents || []).filter(pid => pid !== id),
+        spouses: (m.spouses || []).filter(sid => sid !== id),
+        children: (m.children || []).filter(cid => cid !== id),
+      }));
+      return remaining;
     });
     if (selectedId === id) setSelectedId(null);
   };
@@ -36,7 +117,7 @@ export default function App() {
           <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center">👨‍👩‍👧‍👦</div>
           <div>
             <div className="font-semibold text-gray-900">Apna Parivaar — Family Tree</div>
-            <div className="text-xs text-gray-600">Add members, upload photos, and connect with accurate flow lines</div>
+            <div className="text-xs text-gray-600">Add relatives (father, mother, spouse, son, daughter, etc.) and see a proper flowchart</div>
           </div>
         </div>
       </header>
@@ -46,7 +127,7 @@ export default function App() {
           <ControlsPanel
             members={members}
             selected={selected}
-            onAdd={addMember}
+            onAdd={addMemberWithRelation}
             onDelete={deleteMember}
             onClearSelection={() => setSelectedId(null)}
           />
@@ -66,7 +147,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="py-8 text-center text-xs text-gray-500">Lines are auto-routed to avoid mismatches. Arrange by setting correct parent when adding members.</footer>
+      <footer className="py-8 text-center text-xs text-gray-500">Use relation types like Father/Mother/Spouse/Son/Daughter for accurate connections. Siblings inherit the same parents.</footer>
     </div>
   );
 }
